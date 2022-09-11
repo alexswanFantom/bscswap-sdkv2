@@ -1,12 +1,15 @@
 import { ChainId } from '../constants';
 import { Currency } from './currency';
+import { BaseCurrency } from "./baseCurrency";
 /**
  * Represents an ERC20 token with a unique address and some metadata.
  */
-export declare class Token extends Currency {
+export declare class Token<T extends string = string> extends BaseCurrency<T> {
     readonly chainId: ChainId;
     readonly address: string;
-    constructor(chainId: ChainId, address: string, decimals: number, symbol?: string, name?: string);
+    readonly isNativeToken: false;
+    readonly isToken: true;
+    constructor(chainId: ChainId, address: string, decimals: number, symbol: T, name?: string);
     /**
      * Returns true if the two tokens are equivalent, i.e. have the same chainId and address.
      * @param other other token to compare
@@ -25,6 +28,6 @@ export declare class Token extends Currency {
  */
 export declare function currencyEquals(currencyA: Currency, currencyB: Currency): boolean;
 export declare const WETH: {
-    2000: Token;
-    56: Token;
+    2000: Token<"WWDOGE">;
+    56: Token<"WBNB">;
 };

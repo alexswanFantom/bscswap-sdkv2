@@ -2,7 +2,8 @@ import invariant from 'tiny-invariant'
 
 import { ChainId, ONE, TradeType, ZERO } from '../constants'
 import { sortedInsert } from '../utils'
-import { Currency, ETHER } from './currency'
+import { Currency } from './currency'
+import { NativeToken } from './NativeToken'
 import { CurrencyAmount } from './fractions/currencyAmount'
 import { Fraction } from './fractions/fraction'
 import { Percent } from './fractions/percent'
@@ -89,13 +90,13 @@ export interface BestTradeOptions {
  */
 function wrappedAmount(currencyAmount: CurrencyAmount, chainId: ChainId): TokenAmount {
   if (currencyAmount instanceof TokenAmount) return currencyAmount
-  if (currencyAmount.currency === ETHER) return new TokenAmount(WETH[chainId], currencyAmount.raw)
+  if (currencyAmount.currency === NativeToken.Instance) return new TokenAmount(WETH[chainId], currencyAmount.raw)
   invariant(false, 'CURRENCY')
 }
 
 function wrappedCurrency(currency: Currency, chainId: ChainId): Token {
   if (currency instanceof Token) return currency
-  if (currency === ETHER) return WETH[chainId]
+  if (currency === NativeToken.Instance) return WETH[chainId]
   invariant(false, 'CURRENCY')
 }
 
@@ -179,13 +180,13 @@ export class Trade {
     this.inputAmount =
       tradeType === TradeType.EXACT_INPUT
         ? amount
-        : route.input === ETHER
+        : route.input === NativeToken.Instance
         ? CurrencyAmount.ether(amounts[0].raw)
         : amounts[0]
     this.outputAmount =
       tradeType === TradeType.EXACT_OUTPUT
         ? amount
-        : route.output === ETHER
+        : route.output === NativeToken.Instance
         ? CurrencyAmount.ether(amounts[amounts.length - 1].raw)
         : amounts[amounts.length - 1]
     this.executionPrice = new Price(
@@ -281,10 +282,10 @@ export class Trade {
         ;[amountOut] = pair.getOutputAmount(amountIn)
       } catch (error) {
         // input too low
-        if (error.isInsufficientInputAmountError) {
-          continue
-        }
-        throw error
+       if ((error as any).isInsufficientInputAmountError) {
+                    continue;
+                }
+                throw error;
       }
       // we have arrived at the output token, so this is the final trade of one of the paths
       if (amountOut.token.equals(tokenOut)) {
@@ -369,10 +370,10 @@ export class Trade {
         ;[amountIn] = pair.getInputAmount(amountOut)
       } catch (error) {
         // not enough liquidity in this pair
-        if (error.isInsufficientReservesError) {
-          continue
-        }
-        throw error
+        if ((error as any).isInsufficientReservesError) {
+                    continue;
+                }
+                throw error;
       }
       // we have arrived at the input token, so this is the first trade of one of the paths
       if (amountIn.token.equals(tokenIn)) {

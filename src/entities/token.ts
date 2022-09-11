@@ -2,19 +2,21 @@ import invariant from 'tiny-invariant'
 import { ChainId } from '../constants'
 import { validateAndParseAddress } from '../utils'
 import { Currency } from './currency'
-
+import { BaseCurrency } from "./baseCurrency";
 /**
  * Represents an ERC20 token with a unique address and some metadata.
  */
-export class Token extends Currency {
+export class Token<T extends string = string> extends BaseCurrency<T> {
   public readonly chainId: ChainId
   public readonly address: string
-
-  public constructor(chainId: ChainId, address: string, decimals: number, symbol?: string, name?: string) {
-    super(decimals, symbol, name)
-    this.chainId = chainId
-    this.address = validateAndParseAddress(address)
-  }
+  public readonly isNativeToken: false = false;
+  public readonly isToken: true = true;
+//
+   public constructor(chainId: ChainId, address: string, decimals: number, symbol: T, name?: string) {
+        super(decimals, symbol, name);
+        this.chainId = chainId;
+        this.address = validateAndParseAddress(address);
+    }
 
   /**
    * Returns true if the two tokens are equivalent, i.e. have the same chainId and address.

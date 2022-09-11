@@ -12,10 +12,6 @@ var _Big = _interopDefault(require('big.js'));
 var toFormat = _interopDefault(require('toformat'));
 var _Decimal = _interopDefault(require('decimal.js-light'));
 var solidity = require('@ethersproject/solidity');
-var contracts = require('@ethersproject/contracts');
-var networks = require('@ethersproject/networks');
-var providers = require('@ethersproject/providers');
-var IPancakePair = _interopDefault(require('@cheeseswap/cheeseswap-core/build/ICheeseSwapPair.json'));
 
 var _SOLIDITY_TYPE_MAXIMA;
 
@@ -347,43 +343,40 @@ function sortedInsert(items, add, maxSize, comparator) {
 }
 
 /**
- * A currency is any fungible financial instrument on Ethereum, including Ether and all ERC20 tokens.
+ * A currency is any fungible financial instrument on Dogechain, including Dogechain and all ERC20 tokens.
  *
- * The only instance of the base class `Currency` is Ether.
+ * The only instance of the base class `Currency` is Dogechain.
  */
 
-var Currency =
+var BaseCurrency =
 /**
- * Constructs an instance of the base class `Currency`. The only instance of the base class `Currency` is `Currency.ETHER`.
+ * Constructs an instance of the base class `Currency`. The only instance of the base class `Currency` is `Currency.NativeToken.Instance`.
  * @param decimals decimals of the currency
  * @param symbol symbol of the currency
  * @param name of the currency
  */
-function Currency(decimals, symbol, name) {
-  validateSolidityTypeInstance(JSBI.BigInt(decimals), SolidityType.uint8);
+function BaseCurrency(decimals, symbol, name) {
+  !(decimals >= 0 && decimals < 255 && Number.isInteger(decimals)) ?  invariant(false, "DECIMALS")  : void 0;
   this.decimals = decimals;
   this.symbol = symbol;
   this.name = name;
 };
-/**
- * The only instance of the base class `Currency`.
- */
-
-Currency.ETHER = /*#__PURE__*/new Currency(18, "WDOGE", "Wrapped Dogecoin");
-var ETHER = Currency.ETHER;
 
 var _WETH;
 /**
  * Represents an ERC20 token with a unique address and some metadata.
  */
 
-var Token = /*#__PURE__*/function (_Currency) {
-  _inheritsLoose(Token, _Currency);
+var Token = /*#__PURE__*/function (_BaseCurrency) {
+  _inheritsLoose(Token, _BaseCurrency);
 
+  //
   function Token(chainId, address, decimals, symbol, name) {
     var _this;
 
-    _this = _Currency.call(this, decimals, symbol, name) || this;
+    _this = _BaseCurrency.call(this, decimals, symbol, name) || this;
+    _this.isNativeToken = false;
+    _this.isToken = true;
     _this.chainId = chainId;
     _this.address = validateAndParseAddress(address);
     return _this;
@@ -419,7 +412,7 @@ var Token = /*#__PURE__*/function (_Currency) {
   };
 
   return Token;
-}(Currency);
+}(BaseCurrency);
 /**
  * Compares two currencies for equality
  */
@@ -436,6 +429,26 @@ function currencyEquals(currencyA, currencyB) {
   }
 }
 var WETH = (_WETH = {}, _WETH[exports.ChainId.MAINNET] = /*#__PURE__*/new Token(exports.ChainId.MAINNET, '0xB7ddC6414bf4F5515b52D8BdD69973Ae205ff101', 18, 'WWDOGE', 'Wrapped WDOGE'), _WETH[exports.ChainId.BSCTESTNET] = /*#__PURE__*/new Token(exports.ChainId.BSCTESTNET, '0xaE8E19eFB41e7b96815649A6a60785e1fbA84C1e', 18, 'WBNB', 'Wrapped BNB'), _WETH);
+
+var NativeToken = /*#__PURE__*/function (_BaseCurrency) {
+  _inheritsLoose(NativeToken, _BaseCurrency);
+
+  function NativeToken() {
+    var _this;
+
+    _this = _BaseCurrency.apply(this, arguments) || this;
+    _this.isNativeToken = true;
+    _this.isToken = false;
+    return _this;
+  }
+
+  return NativeToken;
+}(BaseCurrency);
+/**
+ * The only instance of the base class `Currency`.
+ */
+
+NativeToken.Instance = /*#__PURE__*/new NativeToken(18, "WDOGE", "Wrapped Dogecoin");
 
 var _toSignificantRoundin, _toFixedRounding;
 var Decimal = /*#__PURE__*/toFormat(_Decimal);
@@ -580,7 +593,7 @@ var CurrencyAmount = /*#__PURE__*/function (_Fraction) {
 
 
   CurrencyAmount.ether = function ether(amount) {
-    return new CurrencyAmount(ETHER, amount);
+    return new CurrencyAmount(NativeToken.Instance, amount);
   };
 
   var _proto = CurrencyAmount.prototype;
@@ -954,8 +967,8 @@ var Route = /*#__PURE__*/function () {
     !pairs.every(function (pair) {
       return pair.chainId === pairs[0].chainId;
     }) ?  invariant(false, 'CHAIN_IDS')  : void 0;
-    !(input instanceof Token && pairs[0].involvesToken(input) || input === ETHER && pairs[0].involvesToken(WETH[pairs[0].chainId])) ?  invariant(false, 'INPUT')  : void 0;
-    !(typeof output === 'undefined' || output instanceof Token && pairs[pairs.length - 1].involvesToken(output) || output === ETHER && pairs[pairs.length - 1].involvesToken(WETH[pairs[0].chainId])) ?  invariant(false, 'OUTPUT')  : void 0;
+    !(input instanceof Token && pairs[0].involvesToken(input) || input === NativeToken.Instance && pairs[0].involvesToken(WETH[pairs[0].chainId])) ?  invariant(false, 'INPUT')  : void 0;
+    !(typeof output === 'undefined' || output instanceof Token && pairs[pairs.length - 1].involvesToken(output) || output === NativeToken.Instance && pairs[pairs.length - 1].involvesToken(WETH[pairs[0].chainId])) ?  invariant(false, 'OUTPUT')  : void 0;
     var path = [input instanceof Token ? input : WETH[pairs[0].chainId]];
 
     for (var _iterator = _createForOfIteratorHelperLoose(pairs.entries()), _step; !(_step = _iterator()).done;) {
@@ -1084,13 +1097,13 @@ function tradeComparator(a, b) {
 
 function wrappedAmount(currencyAmount, chainId) {
   if (currencyAmount instanceof TokenAmount) return currencyAmount;
-  if (currencyAmount.currency === ETHER) return new TokenAmount(WETH[chainId], currencyAmount.raw);
+  if (currencyAmount.currency === NativeToken.Instance) return new TokenAmount(WETH[chainId], currencyAmount.raw);
     invariant(false, 'CURRENCY')  ;
 }
 
 function wrappedCurrency(currency, chainId) {
   if (currency instanceof Token) return currency;
-  if (currency === ETHER) return WETH[chainId];
+  if (currency === NativeToken.Instance) return WETH[chainId];
     invariant(false, 'CURRENCY')  ;
 }
 /**
@@ -1136,8 +1149,8 @@ var Trade = /*#__PURE__*/function () {
 
     this.route = route;
     this.tradeType = tradeType;
-    this.inputAmount = tradeType === exports.TradeType.EXACT_INPUT ? amount : route.input === ETHER ? CurrencyAmount.ether(amounts[0].raw) : amounts[0];
-    this.outputAmount = tradeType === exports.TradeType.EXACT_OUTPUT ? amount : route.output === ETHER ? CurrencyAmount.ether(amounts[amounts.length - 1].raw) : amounts[amounts.length - 1];
+    this.inputAmount = tradeType === exports.TradeType.EXACT_INPUT ? amount : route.input === NativeToken.Instance ? CurrencyAmount.ether(amounts[0].raw) : amounts[0];
+    this.outputAmount = tradeType === exports.TradeType.EXACT_OUTPUT ? amount : route.output === NativeToken.Instance ? CurrencyAmount.ether(amounts[amounts.length - 1].raw) : amounts[amounts.length - 1];
     this.executionPrice = new Price(this.inputAmount.currency, this.outputAmount.currency, this.inputAmount.raw, this.outputAmount.raw);
     this.nextMidPrice = Price.fromRoute(new Route(nextPairs, route.input));
     this.priceImpact = computePriceImpact(route.midPrice, this.inputAmount, this.outputAmount);
@@ -1385,8 +1398,8 @@ var Router = /*#__PURE__*/function () {
 
 
   Router.swapCallParameters = function swapCallParameters(trade, options) {
-    var etherIn = trade.inputAmount.currency === ETHER;
-    var etherOut = trade.outputAmount.currency === ETHER; // the router does not support both ether in and out
+    var etherIn = trade.inputAmount.currency === NativeToken.Instance;
+    var etherOut = trade.outputAmount.currency === NativeToken.Instance; // the router does not support both ether in and out
 
     !!(etherIn && etherOut) ?  invariant(false, 'ETHER_IN_OUT')  : void 0;
     !(options.ttl > 0) ?  invariant(false, 'TTL')  : void 0;
@@ -1456,127 +1469,15 @@ var Router = /*#__PURE__*/function () {
   return Router;
 }();
 
-var ERC20 = [
-	{
-		constant: true,
-		inputs: [
-		],
-		name: "decimals",
-		outputs: [
-			{
-				name: "",
-				type: "uint8"
-			}
-		],
-		payable: false,
-		stateMutability: "view",
-		type: "function"
-	},
-	{
-		constant: true,
-		inputs: [
-			{
-				name: "",
-				type: "address"
-			}
-		],
-		name: "balanceOf",
-		outputs: [
-			{
-				name: "",
-				type: "uint256"
-			}
-		],
-		payable: false,
-		stateMutability: "view",
-		type: "function"
-	}
-];
-
-var _TOKEN_DECIMALS_CACHE;
-var TOKEN_DECIMALS_CACHE = (_TOKEN_DECIMALS_CACHE = {}, _TOKEN_DECIMALS_CACHE[exports.ChainId.MAINNET] = {
-  '0xE0B7927c4aF23765Cb51314A0E0521A9645F0E2A': 9 // DGD
-
-}, _TOKEN_DECIMALS_CACHE);
-/**
- * Contains methods for constructing instances of pairs and tokens from on-chain data.
- */
-
-var Fetcher = /*#__PURE__*/function () {
-  /**
-   * Cannot be constructed.
-   */
-  function Fetcher() {}
-  /**
-   * Fetch information for a given token on the given chain, using the given ethers provider.
-   * @param chainId chain of the token
-   * @param address address of the token on the chain
-   * @param provider provider used to fetch the token
-   * @param symbol optional symbol of the token
-   * @param name optional name of the token
-   */
-
-
-  Fetcher.fetchTokenData = function fetchTokenData(chainId, address, provider, symbol, name) {
-    try {
-      var _TOKEN_DECIMALS_CACHE2, _TOKEN_DECIMALS_CACHE3;
-
-      var _temp3 = function _temp3(parsedDecimals) {
-        return new Token(chainId, address, parsedDecimals, symbol, name);
-      };
-
-      if (provider === undefined) provider = providers.getDefaultProvider(networks.getNetwork(chainId));
-
-      var _temp4 = typeof ((_TOKEN_DECIMALS_CACHE2 = TOKEN_DECIMALS_CACHE) === null || _TOKEN_DECIMALS_CACHE2 === void 0 ? void 0 : (_TOKEN_DECIMALS_CACHE3 = _TOKEN_DECIMALS_CACHE2[chainId]) === null || _TOKEN_DECIMALS_CACHE3 === void 0 ? void 0 : _TOKEN_DECIMALS_CACHE3[address]) === 'number';
-
-      return Promise.resolve(_temp4 ? _temp3(TOKEN_DECIMALS_CACHE[chainId][address]) : Promise.resolve(new contracts.Contract(address, ERC20, provider).decimals().then(function (decimals) {
-        var _TOKEN_DECIMALS_CACHE4, _extends2, _extends3;
-
-        TOKEN_DECIMALS_CACHE = _extends({}, TOKEN_DECIMALS_CACHE, (_extends3 = {}, _extends3[chainId] = _extends({}, (_TOKEN_DECIMALS_CACHE4 = TOKEN_DECIMALS_CACHE) === null || _TOKEN_DECIMALS_CACHE4 === void 0 ? void 0 : _TOKEN_DECIMALS_CACHE4[chainId], (_extends2 = {}, _extends2[address] = decimals, _extends2)), _extends3));
-        return decimals;
-      })).then(_temp3));
-    } catch (e) {
-      return Promise.reject(e);
-    }
-  }
-  /**
-   * Fetches information about a pair and constructs a pair from the given two tokens.
-   * @param tokenA first token
-   * @param tokenB second token
-   * @param provider the provider to use to fetch the data
-   */
-  ;
-
-  Fetcher.fetchPairData = function fetchPairData(tokenA, tokenB, provider) {
-    try {
-      if (provider === undefined) provider = providers.getDefaultProvider(networks.getNetwork(tokenA.chainId));
-      !(tokenA.chainId === tokenB.chainId) ? "development" !== "production" ? invariant(false, 'CHAIN_ID') : invariant(false) : void 0;
-      var address = Pair.getAddress(tokenA, tokenB);
-      return Promise.resolve(new contracts.Contract(address, IPancakePair.abi, provider).getReserves()).then(function (_ref) {
-        var reserves0 = _ref[0],
-            reserves1 = _ref[1];
-        var balances = tokenA.sortsBefore(tokenB) ? [reserves0, reserves1] : [reserves1, reserves0];
-        return new Pair(new TokenAmount(tokenA, balances[0]), new TokenAmount(tokenB, balances[1]));
-      });
-    } catch (e) {
-      return Promise.reject(e);
-    }
-  };
-
-  return Fetcher;
-}();
-
 exports.JSBI = JSBI;
-exports.Currency = Currency;
 exports.CurrencyAmount = CurrencyAmount;
-exports.ETHER = ETHER;
 exports.FACTORY_ADDRESS = FACTORY_ADDRESS;
-exports.Fetcher = Fetcher;
 exports.Fraction = Fraction;
 exports.INIT_CODE_HASH = INIT_CODE_HASH;
 exports.InsufficientInputAmountError = InsufficientInputAmountError;
 exports.InsufficientReservesError = InsufficientReservesError;
 exports.MINIMUM_LIQUIDITY = MINIMUM_LIQUIDITY;
+exports.NativeToken = NativeToken;
 exports.Pair = Pair;
 exports.Percent = Percent;
 exports.Price = Price;
