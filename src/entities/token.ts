@@ -61,7 +61,7 @@ export const WETH = {
     ChainId.MAINNET,
     '0xB7ddC6414bf4F5515b52D8BdD69973Ae205ff101',
     18,
-    'WDOGE',
+    'WWDOGE',
     'Wrapped WDOGE'
   ),
   [ChainId.BSCTESTNET]: new Token(
