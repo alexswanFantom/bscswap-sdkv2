@@ -20,8 +20,8 @@ var IPancakePair = _interopDefault(require('@cheeseswap/cheeseswap-core/build/IC
 var _SOLIDITY_TYPE_MAXIMA;
 
 (function (ChainId) {
-  ChainId[ChainId["MAINNET"] = 56] = "MAINNET";
-  ChainId[ChainId["BSCTESTNET"] = 2000] = "BSCTESTNET";
+  ChainId[ChainId["MAINNET"] = 2000] = "MAINNET";
+  ChainId[ChainId["BSCTESTNET"] = 56] = "BSCTESTNET";
 })(exports.ChainId || (exports.ChainId = {}));
 
 (function (TradeType) {
